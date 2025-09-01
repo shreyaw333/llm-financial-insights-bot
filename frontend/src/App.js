@@ -39,18 +39,19 @@ function App() {
       <div className="container">
         {/* Main Content */}
         <div className="main-content">
-          <button className="refresh-button" onClick={fetchStocks} disabled={loading}>
-            {loading ? 'Loading...' : 'Refresh Prices'}
-          </button>
-          
           <div className="header">
             <div className="title">Financial Insights Bot</div>
             <div className="subtitle">Get AI-powered stock analysis and market insights</div>
           </div>
           
-          <div className="market-status">
-            <div className="status-indicator"></div>
-            <div className="status-text">Market Open - Live Prices</div>
+          <div className="market-status-container">
+            <div className="market-status">
+              <div className="status-indicator"></div>
+              <div className="status-text">Market Open - Live Prices</div>
+            </div>
+            <button className="refresh-button" onClick={fetchStocks} disabled={loading}>
+              {loading ? 'Loading...' : 'Refresh Prices'}
+            </button>
           </div>
           
           {error && (

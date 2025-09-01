@@ -14,7 +14,7 @@ function App() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:8000/stocks');
+      const response = await fetch('http://llm-financial-insights-bot-production.up.railway.app/stocks');
       if (!response.ok) {
         throw new Error('Failed to fetch stock data');
       }

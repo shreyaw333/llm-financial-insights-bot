@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 function Chat({ stocks }) {
   const [messages, setMessages] = useState([
@@ -13,7 +14,6 @@ function Chat({ stocks }) {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Scroll to bottom when new messages arrive
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -22,7 +22,6 @@ function Chat({ stocks }) {
     scrollToBottom();
   }, [messages]);
 
-  // Send message to Claude
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
@@ -32,7 +31,6 @@ function Chat({ stocks }) {
       content: inputMessage
     };
 
-    // Add user message immediately
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
@@ -75,7 +73,6 @@ function Chat({ stocks }) {
     }
   };
 
-  // Handle enter key press
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -83,7 +80,6 @@ function Chat({ stocks }) {
     }
   };
 
-  // Quick question handlers
   const handleQuickQuestion = (question) => {
     setInputMessage(question);
     inputRef.current?.focus();
@@ -99,7 +95,10 @@ function Chat({ stocks }) {
       <div className="chat-messages">
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.type}`}>
-            {message.content}
+            {message.type === 'bot'
+              ? <ReactMarkdown>{message.content}</ReactMarkdown>
+              : message.content
+            }
           </div>
         ))}
         

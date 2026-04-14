@@ -5,7 +5,7 @@ from typing import List, Dict
 import uvicorn
 
 from market_data import get_all_stocks, get_mock_stocks
-from claude_service import get_financial_analysis, get_market_summary
+from claude_service import get_financial_analysis, get_market_summary, get_history_from_db, clear_history_from_db
 
 # Create FastAPI app
 app = FastAPI(title="Financial Insights Bot", version="1.0.0")
@@ -102,6 +102,15 @@ async def get_market_summary_endpoint() -> Dict:
     except Exception as e:
         print(f"Error generating market summary: {e}")
         return {"summary": "Market summary unavailable at the moment."}
+    
+@app.get("/history")
+async def get_chat_history(session_id: str = "default") -> List[Dict]:
+    return get_history_from_db(session_id)
+
+@app.delete("/history")
+async def clear_chat_history(session_id: str = "default"):
+    clear_history_from_db(session_id)
+    return {"message": "Chat history cleared"}
 
 # Run the server
 if __name__ == "__main__":

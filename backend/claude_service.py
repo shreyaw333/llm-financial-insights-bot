@@ -2,22 +2,17 @@ import os
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from typing import Dict, List
-from langchain.memory import ConversationBufferWindowMemory
-from langchain_core.messages import HumanMessage, AIMessage
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
 
 load_dotenv()
 
 client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-conversation_memories = {}
 
 def get_db_connection():
     return psycopg2.connect(os.getenv("DATABASE_URL"), sslmode='require')
 
 def init_db():
-    """Create chat_history table if it doesn't exist"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -37,16 +32,7 @@ def init_db():
     except Exception as e:
         print(f"Database init error: {e}")
 
-# Initialize DB on startup
 init_db()
-
-def get_or_create_memory(session_id: str = "default") -> ConversationBufferWindowMemory:
-    if session_id not in conversation_memories:
-        conversation_memories[session_id] = ConversationBufferWindowMemory(
-            k=10,
-            return_messages=True
-        )
-    return conversation_memories[session_id]
 
 def save_message_to_db(session_id: str, role: str, content: str):
     try:
@@ -86,14 +72,10 @@ def clear_history_from_db(session_id: str = "default"):
         conn.commit()
         cur.close()
         conn.close()
-        # Also clear in-memory
-        if session_id in conversation_memories:
-            del conversation_memories[session_id]
     except Exception as e:
         print(f"Error clearing DB: {e}")
 
 def get_financial_analysis(user_message: str, current_stocks: List[Dict] = None, session_id: str = "default") -> str:
-    memory = get_or_create_memory(session_id)
 
     stock_context = ""
     if current_stocks:
@@ -102,14 +84,12 @@ def get_financial_analysis(user_message: str, current_stocks: List[Dict] = None,
             if stock["status"] == "success":
                 stock_context += f"- {stock['symbol']} ({stock['company']}): ${stock['price']} ({stock['change']:+.2f}, {stock['change_percent']}%)\n"
 
-    history = memory.load_memory_variables({})
+    # Build conversation history from PostgreSQL
+    past_messages = get_history_from_db(session_id)
     history_text = ""
-    if history.get("history"):
-        for msg in history["history"]:
-            if isinstance(msg, HumanMessage):
-                history_text += f"User: {msg.content}\n"
-            elif isinstance(msg, AIMessage):
-                history_text += f"Assistant: {msg.content}\n"
+    for msg in past_messages[-10:]:
+        role = "User" if msg["role"] == "user" else "Assistant"
+        history_text += f"{role}: {msg['content']}\n"
 
     system_prompt = """You are a knowledgeable financial assistant helping users analyze stocks and make investment decisions.
 
@@ -133,12 +113,8 @@ Guidelines:
         )
 
         answer = response.content[0].text
-        memory.save_context({"input": user_message}, {"output": answer})
-        
-        # Save both messages to PostgreSQL
         save_message_to_db(session_id, "user", user_message)
         save_message_to_db(session_id, "assistant", answer)
-
         return answer
 
     except Exception as e:

@@ -1,4 +1,4 @@
-# cache bust 1
+# cache bust 2
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 anthropic>=0.25.0
@@ -7,7 +7,4 @@ python-dotenv==1.0.0
 pydantic==2.10.0
 python-multipart==0.0.6
 yfinance>=0.2.0
-langchain>=0.2.0
-langchain-community>=0.2.0
-langchain-core>=0.2.0
 psycopg2-binary>=2.9.0

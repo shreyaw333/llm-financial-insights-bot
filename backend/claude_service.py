@@ -3,7 +3,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from typing import Dict, List
 from langchain.memory import ConversationBufferWindowMemory
-from langchain.schema import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime

@@ -1,19 +1,12 @@
-import requests
-import os
-from dotenv import load_dotenv
+import yfinance as yf
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List
 
-load_dotenv()
-
-ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
-
-# List of stocks we want to display
 STOCKS = ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN", "TSLA"]
 
-# Company names for display
 COMPANY_NAMES = {
     "AAPL": "Apple Inc.",
-    "MSFT": "Microsoft Corporation", 
+    "MSFT": "Microsoft Corporation",
     "GOOGL": "Alphabet Inc.",
     "NVDA": "NVIDIA Corporation",
     "AMZN": "Amazon.com Inc.",
@@ -22,43 +15,24 @@ COMPANY_NAMES = {
 
 def get_stock_quote(symbol: str) -> Dict:
     """Get current stock quote for a single symbol"""
-    url = f"https://www.alphavantage.co/query"
-    params = {
-        "function": "GLOBAL_QUOTE",
-        "symbol": symbol,
-        "apikey": ALPHA_VANTAGE_API_KEY
-    }
-    
     try:
-        response = requests.get(url, params=params)
-        data = response.json()
-        
-        if "Global Quote" in data:
-            quote = data["Global Quote"]
-            
-            # Extract the data we need
-            current_price = float(quote["05. price"])
-            change = float(quote["09. change"])
-            change_percent = quote["10. change percent"].replace("%", "")
-            
-            return {
-                "symbol": symbol,
-                "company": COMPANY_NAMES.get(symbol, symbol),
-                "price": round(current_price, 2),
-                "change": round(change, 2),
-                "change_percent": change_percent,
-                "status": "success"
-            }
-        else:
-            return {
-                "symbol": symbol,
-                "company": COMPANY_NAMES.get(symbol, symbol),
-                "price": 0.0,
-                "change": 0.0,
-                "change_percent": "0.00",
-                "status": "error"
-            }
-            
+        ticker = yf.Ticker(symbol)
+        info = ticker.fast_info
+
+        current_price = round(info.last_price, 2)
+        prev_close = round(info.previous_close, 2)
+        change = round(current_price - prev_close, 2)
+        change_percent = round((change / prev_close) * 100, 4)
+
+        return {
+            "symbol": symbol,
+            "company": COMPANY_NAMES.get(symbol, symbol),
+            "price": current_price,
+            "change": change,
+            "change_percent": str(change_percent),
+            "status": "success"
+        }
+
     except Exception as e:
         print(f"Error fetching {symbol}: {e}")
         return {
@@ -71,18 +45,20 @@ def get_stock_quote(symbol: str) -> Dict:
         }
 
 def get_all_stocks() -> List[Dict]:
-    """Get quotes for all stocks in our watchlist"""
-    stocks_data = []
-    
-    for symbol in STOCKS:
-        stock_data = get_stock_quote(symbol)
-        stocks_data.append(stock_data)
-    
-    return stocks_data
+    """Fetch all stocks in parallel for speed"""
+    results = {}
 
-# Mock data for testing (when API limits hit)
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = {executor.submit(get_stock_quote, symbol): symbol for symbol in STOCKS}
+        for future in as_completed(futures):
+            symbol = futures[future]
+            results[symbol] = future.result()
+
+    # Return in original order
+    return [results[symbol] for symbol in STOCKS]
+
 def get_mock_stocks() -> List[Dict]:
-    """Return mock stock data for testing"""
+    """Return mock stock data as fallback"""
     return [
         {"symbol": "AAPL", "company": "Apple Inc.", "price": 178.42, "change": 2.15, "change_percent": "1.22", "status": "success"},
         {"symbol": "MSFT", "company": "Microsoft Corporation", "price": 384.91, "change": 5.67, "change_percent": "1.49", "status": "success"},
